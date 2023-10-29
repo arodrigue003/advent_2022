@@ -27,7 +27,7 @@ pub fn parse_dir_line(input: &str) -> IResult<&str, DirEntry> {
             take_while1(is_alphanumeric_dot),
             line_ending,
         ),
-        |name| DirEntry { name },
+        |name| DirEntry { name, size: 0 },
     )
     .parse(input)
 }
@@ -83,4 +83,13 @@ pub fn parse_input(input: &str) -> IResult<&str, Vec<Command>> {
         map(parse_cd_command, |res| Command::Cd(res)),
     )))
     .parse(input)
+}
+
+pub fn parse_data(data: &str) -> Vec<Command> {
+    let (res, commands) = parse_input(&data).unwrap();
+    if res != "" {
+        panic!("Unable to fully parse the input: {}", res);
+    }
+
+    commands
 }

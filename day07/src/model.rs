@@ -1,6 +1,7 @@
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct DirEntry<'a> {
     pub name: &'a str,
+    pub size: i64,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]

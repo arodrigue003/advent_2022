@@ -5,7 +5,10 @@ use day07::parser::{
 
 #[test]
 fn test_parse_dir_line() {
-    assert_eq!(parse_dir_line("dir a\n"), Ok(("", DirEntry { name: "a" })));
+    assert_eq!(
+        parse_dir_line("dir a\n"),
+        Ok(("", DirEntry { name: "a", size: 0 }))
+    );
 }
 
 #[test]
@@ -26,7 +29,7 @@ fn test_parse_file_line() {
 fn test_parse_ls_line() {
     assert_eq!(
         parse_ls_line("dir a\n"),
-        Ok(("", Inode::Dir(DirEntry { name: "a" })))
+        Ok(("", Inode::Dir(DirEntry { name: "a", size: 0 })))
     );
     assert_eq!(
         parse_ls_line("14848514 b.txt\n"),
@@ -53,7 +56,7 @@ dir a
         Ok((
             "",
             vec![
-                Inode::Dir(DirEntry { name: "a" }),
+                Inode::Dir(DirEntry { name: "a", size: 0 }),
                 Inode::File(FileEntry {
                     name: "b.txt",
                     size: 14848514
@@ -111,7 +114,7 @@ $ ls
             vec![
                 Command::Cd(CdTarget::Root),
                 Command::Ls(vec![
-                    Inode::Dir(DirEntry { name: "a" }),
+                    Inode::Dir(DirEntry { name: "a", size: 0 }),
                     Inode::File(FileEntry {
                         name: "b.txt",
                         size: 14848514
@@ -120,11 +123,11 @@ $ ls
                         name: "c.dat",
                         size: 8504156
                     }),
-                    Inode::Dir(DirEntry { name: "d" })
+                    Inode::Dir(DirEntry { name: "d", size: 0 })
                 ]),
                 Command::Cd(CdTarget::Directory("a")),
                 Command::Ls(vec![
-                    Inode::Dir(DirEntry { name: "e" }),
+                    Inode::Dir(DirEntry { name: "e", size: 0 }),
                     Inode::File(FileEntry {
                         name: "f",
                         size: 29116
