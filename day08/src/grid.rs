@@ -48,44 +48,53 @@ impl Grid {
     pub fn is_visible(&self, line: usize, column: usize) -> bool {
         let tree_height = self.get(line, column);
 
-        // Check line before
-        if (0..column)
+        (0..column) // line before
             .map(|i| self.get(line, i))
             .all(|other_tree_height| tree_height > other_tree_height)
-        {
-            return true;
-        }
-
-        // check line after
-        if ((column + 1)..self.width)
-            .map(|i| self.get(line, i))
-            .all(|other_tree_height| tree_height > other_tree_height)
-        {
-            return true;
-        }
-
-        // check column before
-        if (0..line)
-            .map(|i| self.get(i, column))
-            .all(|other_tree_height| tree_height > other_tree_height)
-        {
-            return true;
-        }
-
-        ((line + 1)..self.height)
-            .map(|i| self.get(i, column))
-            .all(|other_tree_height| tree_height > other_tree_height)
+            || ((column + 1)..self.width) // line after
+                .map(|i| self.get(line, i))
+                .all(|other_tree_height| tree_height > other_tree_height)
+            || (0..line) // column before
+                .map(|i| self.get(i, column))
+                .all(|other_tree_height| tree_height > other_tree_height)
+            || ((line + 1)..self.height) // column after
+                .map(|i| self.get(i, column))
+                .all(|other_tree_height| tree_height > other_tree_height)
     }
 
     pub fn scenic_score(&self, line: usize, column: usize) -> usize {
         let tree_height = self.get(line, column);
 
-        // Check line after
-        let mut view_distance: usize = 0;
-        for col in (column + 1..self.width) {
-            // if self.get(line, col)
-        }
-
-        view_distance
+        (match (0..column) // check line before
+            .rev()
+            .map(|i| self.get(line, i))
+            .take_while(|height| *height < tree_height)
+            .count()
+        {
+            count if count == column => count,
+            count => count + 1,
+        }) * (match (column + 1..self.width) // check line after
+            .map(|i| self.get(line, i))
+            .take_while(|height| *height < tree_height)
+            .count()
+        {
+            count if count == self.width - column - 1 => count,
+            count => count + 1,
+        }) * (match (0..line) // check column before
+            .rev()
+            .map(|i| self.get(i, column))
+            .take_while(|height| *height < tree_height)
+            .count()
+        {
+            count if count == line => count,
+            count => count + 1,
+        }) * (match (line + 1..self.height) // check column after
+            .map(|i| self.get(i, column))
+            .take_while(|height| *height < tree_height)
+            .count()
+        {
+            count if count == self.height - line - 1 => count,
+            count => count + 1,
+        })
     }
 }

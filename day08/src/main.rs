@@ -1,10 +1,11 @@
-mod grid;
-
-use crate::grid::Grid;
 use std::fs;
 use std::path::PathBuf;
 
 use clap::Parser;
+
+use crate::grid::Grid;
+
+mod grid;
 
 #[derive(Parser, Debug, Eq, PartialEq, Clone)]
 struct Cli {
@@ -27,8 +28,13 @@ fn solve_part_one(data: &Grid) {
     println!("Part one solution: {:#?}", res);
 }
 
-fn solve_part_two(data: &str) {
-    println!("Part two solution: {:#?}", "data");
+fn solve_part_two(data: &Grid) {
+    let res: usize = (0..data.height())
+        .flat_map(|line| (0..data.width()).map(move |column| data.scenic_score(line, column)))
+        .max()
+        .unwrap();
+
+    println!("Part two solution: {:#?}", res);
 }
 
 fn main() {
@@ -42,5 +48,5 @@ fn main() {
     }
 
     solve_part_one(&grid);
-    solve_part_two(&data);
+    solve_part_two(&grid);
 }
