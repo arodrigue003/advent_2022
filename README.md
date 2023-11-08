@@ -12,3 +12,5 @@
 # TODO
 
 Improve day12 part02 solution
+
+See if it is possible to generalize the SparseInterval approach of day15 to a 2d space
