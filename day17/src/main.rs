@@ -1,53 +1,181 @@
 use lazy_static::lazy_static;
+use std::ops::{Index, IndexMut};
 use std::{env, fs};
 
+static GRID_HEIGHT: usize = 50_000;
+
+struct Shape {
+    shape: Vec<Point>,
+    height: usize,
+}
+
 lazy_static! {
-    static ref SHAPES: [Vec<Point>; 5] = [
-        vec![
-            Point { x: 0, y: 0 },
-            Point { x: 1, y: 0 },
-            Point { x: 2, y: 0 },
-            Point { x: 3, y: 0 },
-        ],
-        vec![
-            Point { x: 1, y: 0 },
-            Point { x: 0, y: 1 },
-            Point { x: 1, y: 1 },
-            Point { x: 2, y: 1 },
-            Point { x: 1, y: 2 },
-        ],
-        vec![
-            Point { x: 0, y: 0 },
-            Point { x: 1, y: 0 },
-            Point { x: 2, y: 0 },
-            Point { x: 2, y: 1 },
-            Point { x: 2, y: 2 },
-        ],
-        vec![
-            Point { x: 0, y: 0 },
-            Point { x: 0, y: 1 },
-            Point { x: 0, y: 2 },
-            Point { x: 0, y: 3 },
-        ],
-        vec![
-            Point { x: 0, y: 0 },
-            Point { x: 1, y: 0 },
-            Point { x: 0, y: 1 },
-            Point { x: 1, y: 1 },
-        ],
+    static ref SHAPES: [Shape; 5] = [
+        Shape {
+            shape: vec![
+                Point { x: 0, y: 0 },
+                Point { x: 1, y: 0 },
+                Point { x: 2, y: 0 },
+                Point { x: 3, y: 0 },
+            ],
+            height: 1
+        },
+        Shape {
+            shape: vec![
+                Point { x: 1, y: 0 },
+                Point { x: 0, y: 1 },
+                Point { x: 1, y: 1 },
+                Point { x: 2, y: 1 },
+                Point { x: 1, y: 2 },
+            ],
+            height: 3
+        },
+        Shape {
+            shape: vec![
+                Point { x: 0, y: 0 },
+                Point { x: 1, y: 0 },
+                Point { x: 2, y: 0 },
+                Point { x: 2, y: 1 },
+                Point { x: 2, y: 2 },
+            ],
+            height: 3
+        },
+        Shape {
+            shape: vec![
+                Point { x: 0, y: 0 },
+                Point { x: 0, y: 1 },
+                Point { x: 0, y: 2 },
+                Point { x: 0, y: 3 },
+            ],
+            height: 4
+        },
+        Shape {
+            shape: vec![
+                Point { x: 0, y: 0 },
+                Point { x: 1, y: 0 },
+                Point { x: 0, y: 1 },
+                Point { x: 1, y: 1 },
+            ],
+            height: 2
+        }
     ];
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 struct Point {
-    x: i32,
-    y: i32,
+    x: usize,
+    y: usize,
 }
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 enum Direction {
     Left,
     Right,
+}
+
+#[derive(Debug, Eq, PartialEq, Copy, Clone)]
+enum FrontLineDirection {
+    Left,
+    Top,
+    Right,
+    Bot,
+}
+
+impl FrontLineDirection {
+    fn get_left_and_front_positions(&self, position: &Point) -> (Option<Point>, Option<Point>) {
+        match self {
+            FrontLineDirection::Left => {
+                let left = if position.y > 0 {
+                    Some(Point {
+                        x: position.x,
+                        y: position.y - 1,
+                    })
+                } else {
+                    None
+                };
+                let front = if position.x > 0 {
+                    Some(Point {
+                        x: position.x - 1,
+                        y: position.y,
+                    })
+                } else {
+                    None
+                };
+                (left, front)
+            }
+            FrontLineDirection::Top => {
+                let left = if position.x > 0 {
+                    Some(Point {
+                        x: position.x - 1,
+                        y: position.y,
+                    })
+                } else {
+                    None
+                };
+                (
+                    left,
+                    Some(Point {
+                        x: position.x,
+                        y: position.y + 1,
+                    }),
+                )
+            }
+            FrontLineDirection::Right => {
+                let front = if position.x < 6 {
+                    Some(Point {
+                        x: position.x + 1,
+                        y: position.y,
+                    })
+                } else {
+                    None
+                };
+                (
+                    Some(Point {
+                        x: position.x,
+                        y: position.y + 1,
+                    }),
+                    front,
+                )
+            }
+            FrontLineDirection::Bot => {
+                let left = if position.x < 6 {
+                    Some(Point {
+                        x: position.x + 1,
+                        y: position.y,
+                    })
+                } else {
+                    None
+                };
+                let front = if position.y > 0 {
+                    Some(Point {
+                        x: position.x,
+                        y: position.y - 1,
+                    })
+                } else {
+                    None
+                };
+                (left, front)
+            }
+        }
+    }
+
+    fn turn_left(&self) -> Self {
+        match self {
+            FrontLineDirection::Left => FrontLineDirection::Bot,
+            FrontLineDirection::Top => FrontLineDirection::Left,
+            FrontLineDirection::Right => FrontLineDirection::Top,
+            FrontLineDirection::Bot => FrontLineDirection::Right,
+        }
+    }
+
+    fn turn_right(&self) -> Self {
+        match self {
+            FrontLineDirection::Left => FrontLineDirection::Top,
+            FrontLineDirection::Top => FrontLineDirection::Right,
+            FrontLineDirection::Right => FrontLineDirection::Bot,
+            FrontLineDirection::Bot => FrontLineDirection::Left,
+        }
+    }
 }
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
@@ -58,20 +186,41 @@ enum GridState {
 
 struct Grid {
     grid: Vec<Vec<GridState>>,
-    max_height: i32,
+    max_height: usize,
+    y_offset: usize,
 }
 
 impl Grid {
     fn new() -> Self {
+        let mut grid = vec![vec![GridState::Air; 7]; GRID_HEIGHT];
+        for i in 0..7 {
+            grid[0][i] = GridState::Rock
+        }
         Self {
-            grid: vec![vec![GridState::Air; 7]; 10_000],
-            max_height: 0,
+            grid,
+            max_height: 1,
+            y_offset: 0,
         }
     }
 
-    fn pretty_print(&self) {
-        for i_line in (0..self.max_height + 5).rev() {
-            let line = &self.grid[i_line as usize];
+    fn pretty_print(&self, full: bool) {
+        let starting_line = if full {
+            0
+        } else {
+            if self.max_height - self.y_offset > 45 {
+                self.max_height - self.y_offset - 45
+            } else {
+                0
+            }
+        };
+
+        for i_line in (starting_line..self.max_height - self.y_offset + 5).rev() {
+            let line = &self.grid[i_line];
+            if i_line % 5 == 0 {
+                print!("{:>6} ", i_line + self.y_offset);
+            } else {
+                print!("       ")
+            }
             for column in line {
                 print!(
                     "{}",
@@ -85,48 +234,77 @@ impl Grid {
         }
     }
 
-    fn push(&self, shape: &Vec<Point>, shape_position: &mut Point, direction: Direction) {
-        // Depending of the direction, check is the shape will be locked or not,
-        let offset = match direction {
-            Direction::Left => -1,
-            Direction::Right => 1,
-        };
+    fn shift_grid(&mut self) {
+        let front_line = self.compute_front_line();
 
-        for part in shape {
-            let x_pos = part.x + shape_position.x + offset;
+        // Front line is the height of the start and end line in the grid.
+        // We need to convert them to grid offset in order to perform our operation
+        let front_line_start = front_line.0 - self.y_offset;
+        let front_line_end = front_line.1 - self.y_offset;
+
+        // If we cannot remove elements from the grid, we are fucked
+        if front_line_start == 0 || front_line_end == 1 {
+            // We can fix this by having the grid height being dynamic and just allocating
+            // new lines without removing old ones.
+            // We can also solve this issue by increasing the base height
+            unimplemented!()
+        }
+
+        // We remove everything bellow the front_line
+        let to_remove = front_line_start.min(front_line_end);
+        self.grid.drain(0..to_remove);
+
+        // We now add new lines above the front line
+        self.grid
+            .append(&mut vec![vec![GridState::Air; 7]; to_remove]);
+
+        // We now increase the y_offset with the number of lines we removed
+        self.y_offset += to_remove;
+    }
+
+    fn push(&self, shape: &Shape, shape_position: &mut Point, direction: Direction) {
+        // special condition where the shape is already located at the left
+        if shape_position.x == 0 && direction == Direction::Left {
+            return;
+        }
+
+        for part in &shape.shape {
+            let x_pos = match direction {
+                Direction::Left => part.x + shape_position.x - 1,
+                Direction::Right => part.x + shape_position.x + 1,
+            };
             let y_pos = part.y + shape_position.y;
-            if x_pos == -1
-                || x_pos == 7
-                || self.grid[y_pos as usize][x_pos as usize] == GridState::Rock
-            {
+            if x_pos == 7 || self[(x_pos, y_pos)] == GridState::Rock {
                 return;
             }
         }
 
         // Every check was ok, update shape position
-        shape_position.x += offset;
+        match direction {
+            Direction::Left => shape_position.x -= 1,
+            Direction::Right => shape_position.x += 1,
+        }
     }
 
-    fn fall(&mut self, shape: &Vec<Point>, shape_position: &mut Point) -> bool {
-        for part in shape {
+    fn fall(&mut self, shape: &Shape, shape_position: &mut Point) -> bool {
+        for part in &shape.shape {
             let x_pos = part.x + shape_position.x;
             let y_pos = part.y + shape_position.y - 1;
-            if y_pos == -1 || self.grid[y_pos as usize][x_pos as usize] == GridState::Rock {
+            if self[(x_pos, y_pos)] == GridState::Rock {
                 // Store the shape in the grid and return true
-                for part in shape {
+                for part in &shape.shape {
                     let x_pos = part.x + shape_position.x;
                     let y_pos = part.y + shape_position.y;
-                    self.grid[y_pos as usize][x_pos as usize] = GridState::Rock;
+                    self[(x_pos, y_pos)] = GridState::Rock;
                 }
 
                 // Compute the new max height
-                self.max_height = self.max_height.max(
-                    shape
-                        .iter()
-                        .map(|part| part.y + shape_position.y + 1)
-                        .max()
-                        .unwrap(),
-                );
+                self.max_height = self.max_height.max(shape_position.y + shape.height);
+
+                // Allocate more cases if necessary
+                if GRID_HEIGHT + self.y_offset - self.max_height < 20 {
+                    self.shift_grid();
+                }
 
                 return true;
             }
@@ -135,6 +313,65 @@ impl Grid {
         // Every check was ok, update shape position
         shape_position.y -= 1;
         false
+    }
+
+    fn compute_front_line(&self) -> (usize, usize) {
+        // Get the position of the first element of the front line
+        let mut starting = Point {
+            x: 0,
+            y: self.max_height,
+        };
+        // Get it done until we find a rock
+        loop {
+            if self[(starting.x, starting.y)] == GridState::Rock {
+                break;
+            }
+            starting.y -= 1
+        }
+
+        // Try to reach the right wall
+        let mut current = starting.clone();
+        let mut direction = FrontLineDirection::Right;
+        while current.x != 6 {
+            let (left, front) = direction.get_left_and_front_positions(&current);
+
+            // If we can go left, turn left and update the position and the direction
+            if let Some(left) = left {
+                if self[(left.x, left.y)] == GridState::Rock {
+                    current = left;
+                    direction = direction.turn_left();
+                    continue;
+                }
+            }
+
+            // If we can go front, advance of one case
+            if let Some(front) = front {
+                if self[(front.x, front.y)] == GridState::Rock {
+                    current = front;
+                    continue;
+                }
+            }
+
+            // If we couldn't move, turn right
+            direction = direction.turn_right();
+        }
+
+        (starting.y, current.y)
+    }
+}
+
+impl Index<(usize, usize)> for Grid {
+    type Output = GridState;
+
+    #[inline(always)]
+    fn index(&self, index: (usize, usize)) -> &Self::Output {
+        &self.grid[index.1 - self.y_offset][index.0]
+    }
+}
+
+impl IndexMut<(usize, usize)> for Grid {
+    fn index_mut(&mut self, index: (usize, usize)) -> &mut Self::Output {
+        &mut self.grid[index.1 - self.y_offset][index.0]
     }
 }
 
@@ -145,7 +382,10 @@ fn solve_part_one(directions: &[Direction]) {
 
     // Initialize shape and it's position
     let mut current_shape = shape_iterator.next().unwrap();
-    let mut current_shape_pos = Point { x: 2, y: 3 };
+    let mut current_shape_pos = Point {
+        x: 2,
+        y: grid.max_height + 3,
+    };
 
     for direction in directions.iter().cycle() {
         // Push the shape with the wind
@@ -169,9 +409,9 @@ fn solve_part_one(directions: &[Direction]) {
         }
     }
 
-    // grid.pretty_print();
+    grid.pretty_print(false);
 
-    println!("Part one solution: {}", grid.max_height);
+    println!("Part one solution: {}", grid.max_height - 1);
 }
 
 fn solve_part_two(data: &str) {
