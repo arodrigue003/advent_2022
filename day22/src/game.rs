@@ -1,101 +1,24 @@
+use crate::enums::MapTile;
+use crate::enums::{Command, Direction};
 use crate::parser;
-use std::collections::HashMap;
-use std::fmt::{Display, Formatter};
+use crate::structs::{GotoLine, GotoLinePair, Point, Position};
+use std::collections::{HashMap, HashSet};
 
-#[derive(Debug, Eq, PartialEq, Clone, Copy, Hash)]
-pub enum Direction {
-    Top,
-    Right,
-    Bottom,
-    Left,
-}
-
-impl Direction {
-    pub fn rotate(&self, rotation: Rotation) -> Self {
-        match rotation {
-            Rotation::Left => match self {
-                Direction::Top => Direction::Left,
-                Direction::Right => Direction::Top,
-                Direction::Bottom => Direction::Right,
-                Direction::Left => Direction::Bottom,
-            },
-            Rotation::Right => match self {
-                Direction::Top => Direction::Right,
-                Direction::Right => Direction::Bottom,
-                Direction::Bottom => Direction::Left,
-                Direction::Left => Direction::Top,
-            },
-        }
-    }
-
-    pub fn value(&self) -> usize {
-        match self {
-            Direction::Top => 3,
-            Direction::Right => 0,
-            Direction::Bottom => 1,
-            Direction::Left => 2,
-        }
-    }
-}
-
-#[derive(Debug, Eq, PartialEq, Clone, Copy)]
-pub enum MapTile {
-    Void,
-    Open,
-    Wall,
-}
-
-impl Display for MapTile {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                MapTile::Void => {
-                    " "
-                }
-                MapTile::Open => {
-                    "."
-                }
-                MapTile::Wall => {
-                    "#"
-                }
-            }
-        )
-    }
-}
-
-#[derive(Debug, Eq, PartialEq, Clone, Copy)]
-pub enum Rotation {
-    Left,
-    Right,
-}
-
-impl Display for Rotation {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Rotation::Left => "L",
-                Rotation::Right => "R",
-            }
-        )
-    }
-}
+const CUBE_DETECTION_VEC_WIDTH: usize = 6;
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct Game {
     map: Vec<Vec<MapTile>>,
     width: usize,
     height: usize,
+    face_width: usize,
     pub start: Position,
     pub path: Vec<Command>,
     goto: HashMap<Position, Position>,
 }
 
 impl Game {
-    pub fn new(data: &str) -> Self {
+    pub fn new(data: &str, face_width: usize) -> Self {
         let grid: Vec<Vec<_>> = data
             .lines()
             .map_while(|line| {
@@ -125,8 +48,8 @@ impl Game {
             .chain(grid.into_iter().map(|line| {
                 let len = line.len();
                 std::iter::once(MapTile::Void)
-                    .chain(line.into_iter())
-                    .chain(vec![MapTile::Void; width - len].into_iter())
+                    .chain(line)
+                    .chain(vec![MapTile::Void; width - len])
                     .chain(std::iter::once(MapTile::Void))
                     .collect()
             }))
@@ -144,7 +67,7 @@ impl Game {
         };
 
         // Get the path
-        let (res, path) = parser::parse_command_line(data.lines().rev().next().unwrap()).unwrap();
+        let (res, path) = parser::parse_command_line(data.lines().next_back().unwrap()).unwrap();
         if !res.is_empty() {
             panic!("Unable to fully parse the input: {}", res);
         }
@@ -153,6 +76,7 @@ impl Game {
             map: grid,
             width: width + 2,
             height: height + 2,
+            face_width,
             start,
             path,
             goto: HashMap::new(),
@@ -262,6 +186,277 @@ impl Game {
         self.goto = goto;
     }
 
+    pub fn add_part_two_goto(&mut self) {
+        // Create a array to store face position
+        // We choose 6 as the size because a cube pattern takes at most 4 cases and we want margin
+        // around that in order to simplify the computation
+        let mut faces: Vec<Vec<bool>> =
+            vec![vec![false; CUBE_DETECTION_VEC_WIDTH]; CUBE_DETECTION_VEC_WIDTH];
+
+        // Iterate over the shape in order to detect faces
+        for line in 0..((self.height - 2) / self.face_width) {
+            for column in 0..((self.width - 2) / self.face_width) {
+                if self.map[line * self.face_width + 1][column * self.face_width + 1]
+                    != MapTile::Void
+                {
+                    faces[line + 1][column + 1] = true
+                }
+            }
+        }
+
+        // We must have 6 faces
+        if faces
+            .iter()
+            .flat_map(|line| line.iter())
+            .filter(|tile| **tile)
+            .count()
+            != 6
+        {
+            panic!("A cube must have 6 faces.")
+        }
+
+        // Build a list of GotoLine in order look into them after
+        let mut goto_lines_hashset: HashSet<GotoLine> = HashSet::new();
+        for line in 1..CUBE_DETECTION_VEC_WIDTH - 1 {
+            for column in 1..CUBE_DETECTION_VEC_WIDTH - 1 {
+                if faces[line][column] {
+                    // Check if we can create an horizontal line on top
+                    if !faces[line - 1][column] {
+                        goto_lines_hashset.insert(GotoLine {
+                            start: Point {
+                                line: (line - 1) * self.face_width,
+                                column: (column - 1) * self.face_width + 1,
+                            },
+                            end: Point {
+                                line: (line - 1) * self.face_width,
+                                column: column * self.face_width,
+                            },
+                        });
+                    }
+                    // Check if we can create an horizontal line on the bottom
+                    if !faces[line + 1][column] {
+                        goto_lines_hashset.insert(GotoLine {
+                            start: Point {
+                                line: line * self.face_width + 1,
+                                column: (column - 1) * self.face_width + 1,
+                            },
+                            end: Point {
+                                line: line * self.face_width + 1,
+                                column: column * self.face_width,
+                            },
+                        });
+                    }
+                    // Check if we can create a vertical line on the left part
+                    if !faces[line][column - 1] {
+                        goto_lines_hashset.insert(GotoLine {
+                            start: Point {
+                                line: (line - 1) * self.face_width + 1,
+                                column: (column - 1) * self.face_width,
+                            },
+                            end: Point {
+                                line: line * self.face_width,
+                                column: (column - 1) * self.face_width,
+                            },
+                        });
+                    }
+                    // Check if we can create a vertical line on the right part
+                    if !faces[line][column + 1] {
+                        goto_lines_hashset.insert(GotoLine {
+                            start: Point {
+                                line: (line - 1) * self.face_width + 1,
+                                column: column * self.face_width + 1,
+                            },
+                            end: Point {
+                                line: line * self.face_width,
+                                column: column * self.face_width + 1,
+                            },
+                        });
+                    }
+                }
+            }
+        }
+
+        // Build a hashmap for search efficiency
+        let mut goto_lines_hashmap: HashMap<Point, Vec<GotoLine>> = HashMap::new();
+        for goto_line in &goto_lines_hashset {
+            // Add both start and end
+            goto_lines_hashmap
+                .entry(goto_line.start.clone())
+                .or_default()
+                .push(goto_line.clone());
+            goto_lines_hashmap
+                .entry(goto_line.end.clone())
+                .or_default()
+                .push(goto_line.clone());
+        }
+
+        // Store formed pairs
+        let mut goto_lines_pairs: Vec<GotoLinePair> = vec![];
+
+        // 1. Look for goto lines that have a point in common
+        for goto_lines in goto_lines_hashmap.values() {
+            if goto_lines.len() == 1 {
+                continue;
+            }
+            if goto_lines.len() > 2 || goto_lines.is_empty() {
+                unreachable!("This cannot exists by construction!");
+            }
+
+            // We know here that goto_lines.len() == 2
+            let first = &goto_lines[0];
+            let second = &goto_lines[1];
+
+            // Remove them from the goto lines hashset
+            let first_was_removed = goto_lines_hashset.remove(first);
+            let second_was_remove = goto_lines_hashset.remove(second);
+            if !first_was_removed || !second_was_remove {
+                continue;
+            }
+
+            // Construct the goto_line_pair in the correct order
+            if first.start == second.start {
+                goto_lines_pairs.push(GotoLinePair {
+                    first: first.clone(),
+                    second: second.clone(),
+                });
+            } else if first.start == second.end {
+                goto_lines_pairs.push(GotoLinePair {
+                    first: first.clone(),
+                    second: second.clone().rev(),
+                });
+            } else if first.end == second.start {
+                goto_lines_pairs.push(GotoLinePair {
+                    first: first.clone().rev(),
+                    second: second.clone(),
+                });
+            } else if first.end == second.end {
+                goto_lines_pairs.push(GotoLinePair {
+                    first: first.clone().rev(),
+                    second: second.clone().rev(),
+                })
+            } else {
+                unreachable!();
+            }
+        }
+
+        // 2. We try to expand from the pairs
+        let mut goto_lines_pairs_to_handle = goto_lines_pairs.clone();
+        while let Some(goto_lines_pair) = goto_lines_pairs_to_handle.pop() {
+            // Check if we have a line that continue with one that turns
+            if Self::try_form_pair(
+                &mut goto_lines_hashset,
+                &mut goto_lines_hashmap,
+                &mut goto_lines_pairs_to_handle,
+                &mut goto_lines_pairs,
+                goto_lines_pair.first.next_point_forward(),
+                goto_lines_pair.second.next_point_right_rotation(),
+            ) {
+                continue;
+            }
+            if Self::try_form_pair(
+                &mut goto_lines_hashset,
+                &mut goto_lines_hashmap,
+                &mut goto_lines_pairs_to_handle,
+                &mut goto_lines_pairs,
+                goto_lines_pair.first.next_point_forward(),
+                goto_lines_pair.second.next_point_left_rotation(),
+            ) {
+                continue;
+            }
+            if Self::try_form_pair(
+                &mut goto_lines_hashset,
+                &mut goto_lines_hashmap,
+                &mut goto_lines_pairs_to_handle,
+                &mut goto_lines_pairs,
+                goto_lines_pair.first.next_point_right_rotation(),
+                goto_lines_pair.second.next_point_forward(),
+            ) {
+                continue;
+            }
+            if Self::try_form_pair(
+                &mut goto_lines_hashset,
+                &mut goto_lines_hashmap,
+                &mut goto_lines_pairs_to_handle,
+                &mut goto_lines_pairs,
+                goto_lines_pair.first.next_point_left_rotation(),
+                goto_lines_pair.second.next_point_forward(),
+            ) {
+                continue;
+            }
+        }
+
+        if !goto_lines_hashset.is_empty() {
+            // Here, we should theoretically only have two elements left in the hashset, we only
+            // have to assemble them in a
+            panic!("We didn't planned for this use case.")
+        }
+
+        if goto_lines_pairs.len() != 7 {
+            panic!("We should have 7 pairs to connect.")
+        }
+
+        self.goto = goto_lines_pairs
+            .into_iter()
+            .flat_map(|goto_line_pair| goto_line_pair.get_goto(self.face_width))
+            .collect();
+    }
+
+    fn try_form_pair(
+        goto_lines_hashset: &mut HashSet<GotoLine>,
+        goto_lines_hashmap: &mut HashMap<Point, Vec<GotoLine>>,
+        goto_lines_pairs_to_handle: &mut Vec<GotoLinePair>,
+        goto_lines_pairs: &mut Vec<GotoLinePair>,
+        first_next: Option<Point>,
+        second_next: Option<Point>,
+    ) -> bool {
+        let first_next = match first_next {
+            None => return false,
+            Some(first_next) => first_next,
+        };
+        let second_next = match second_next {
+            None => return false,
+            Some(second_next) => second_next,
+        };
+
+        if let Some(first_lines) = goto_lines_hashmap.get(&first_next) {
+            if let Some(second_lines) = goto_lines_hashmap.get(&second_next) {
+                // Get the elements from the vecs
+                if first_lines.len() != 1 || second_lines.len() != 1 {
+                    unreachable!("This cannot exists by construction")
+                }
+
+                let first = &first_lines[0];
+                let second = &second_lines[0];
+
+                // Remove them from the goto lines hashset
+                let first_was_removed = goto_lines_hashset.remove(first);
+                let second_was_remove = goto_lines_hashset.remove(second);
+                if !first_was_removed || !second_was_remove {
+                    return false;
+                }
+
+                // Add them to the goto_lines_pairs in the correct order
+                let first = if first.start == first_next {
+                    first.clone()
+                } else {
+                    first.clone().rev()
+                };
+                let second = if second.start == second_next {
+                    second.clone()
+                } else {
+                    second.clone().rev()
+                };
+                let goto_line_pair = GotoLinePair { first, second };
+
+                goto_lines_pairs_to_handle.push(goto_line_pair.clone());
+                goto_lines_pairs.push(goto_line_pair);
+
+                return true;
+            }
+        }
+        false
+    }
+
     pub fn go_forward(&self, current: &Position) -> Position {
         let next = match current.direction {
             Direction::Top => Position {
@@ -287,7 +482,11 @@ impl Game {
         };
 
         match self.map[next.line][next.column] {
-            MapTile::Void => self.goto.get(&next).unwrap().clone(),
+            MapTile::Void => self
+                .goto
+                .get(&next)
+                .expect("The add goto function did not work properly and needs to be fixed.")
+                .clone(),
             MapTile::Open | MapTile::Wall => next,
         }
     }
@@ -347,17 +546,4 @@ impl Game {
         // Show the starting position
         println!("Starting at {:?}", self.start);
     }
-}
-
-#[derive(Debug, Eq, PartialEq, Clone, Hash)]
-pub struct Position {
-    pub line: usize,
-    pub column: usize,
-    pub direction: Direction,
-}
-
-#[derive(Debug, Eq, PartialEq, Clone)]
-pub enum Command {
-    Forward(usize),
-    Rotate(Rotation),
 }

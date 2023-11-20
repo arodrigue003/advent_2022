@@ -1,6 +1,7 @@
 use clap::Parser;
-use day22::game::{Command, Game, MapTile, Position};
-use std::fmt::Display;
+use day22::enums::{Command, MapTile};
+use day22::game::Game;
+use day22::structs::Position;
 use std::fs;
 use std::path::PathBuf;
 
@@ -9,6 +10,10 @@ struct Cli {
     /// Enable verbose display
     #[arg(short, long, default_value_t = false)]
     verbose: bool,
+
+    /// Width of a cube face
+    #[arg(short, long, default_value_t = 50)]
+    face_width: usize,
 
     /// File to parse
     #[arg(default_value = "input")]
@@ -21,6 +26,29 @@ fn solve_part_one(game: &mut Game, verbose: bool) {
         game.pretty_print();
     }
 
+    let arrival = simulate(&game);
+
+    println!(
+        "Part one solution: {:?}",
+        1000 * arrival.line + 4 * arrival.column + arrival.direction.value()
+    );
+}
+
+fn solve_part_two(game: &mut Game, verbose: bool) {
+    game.add_part_two_goto();
+    if verbose {
+        game.pretty_print();
+    }
+
+    let arrival = simulate(&game);
+
+    println!(
+        "Part two solution: {:?}",
+        1000 * arrival.line + 4 * arrival.column + arrival.direction.value()
+    );
+}
+
+fn simulate(game: &&mut Game) -> Position {
     let mut current = game.start.clone();
     let mut path: Vec<Position> = vec![current.clone()];
 
@@ -42,24 +70,16 @@ fn solve_part_one(game: &mut Game, verbose: bool) {
             }
         }
     }
-
-    println!(
-        "Part one solution: {:?}",
-        1000 * current.line + 4 * current.column + current.direction.value()
-    );
-}
-
-fn solve_part_two(data: &str) {
-    println!("Part two solution:");
+    current
 }
 
 fn main() {
     let args = Cli::parse();
 
     let data: String = fs::read_to_string(&args.path).unwrap();
-    let mut game = Game::new(&data);
+    let mut game = Game::new(&data, args.face_width);
 
     solve_part_one(&mut game, args.verbose);
 
-    solve_part_two(&"data");
+    solve_part_two(&mut game, args.verbose);
 }

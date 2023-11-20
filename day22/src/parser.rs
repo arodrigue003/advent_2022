@@ -1,5 +1,5 @@
-use crate::game::Command;
-use crate::game::Rotation;
+use crate::enums::Command;
+use crate::enums::Rotation;
 use nom::branch::alt;
 use nom::bytes::complete::tag;
 use nom::character::complete::digit1;

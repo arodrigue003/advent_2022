@@ -11,8 +11,8 @@
 
 # TODO
 
-Improve day12 part02 solution
+* [ ] Day12: Improve part02 solution
+* [ ] Day15: See if it is possible to generalize the SparseInterval approach to a 2d space
+* [ ] Day18: Make it work in debug mode
+* [ ] Day22: Handle every cube pattern
 
-See if it is possible to generalize the SparseInterval approach of day15 to a 2d space
-
-Make day 18 work in debug mode
