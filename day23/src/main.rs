@@ -1,5 +1,5 @@
+use ahash::{AHashMap, AHashSet};
 use clap::Parser;
-use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::PathBuf;
 
@@ -95,7 +95,7 @@ impl Elf {
     pub fn compute_new_position(
         &self,
         starting_direction: &Direction,
-        current: &HashSet<Elf>,
+        current: &AHashSet<Elf>,
     ) -> Elf {
         // Build elf scout array
         let neighbors = (current.contains(&Elf {
@@ -153,7 +153,7 @@ impl Elf {
     }
 }
 
-fn get_elfs_bounding_box(elfs: &HashSet<Elf>) -> (i64, i64, i64, i64) {
+pub fn get_elfs_bounding_box(elfs: &AHashSet<Elf>) -> (i64, i64, i64, i64) {
     let line_min = elfs.iter().map(|elf| elf.line).min().unwrap();
     let line_max = elfs.iter().map(|elf| elf.line).max().unwrap();
     let column_min = elfs.iter().map(|elf| elf.column).min().unwrap();
@@ -161,7 +161,7 @@ fn get_elfs_bounding_box(elfs: &HashSet<Elf>) -> (i64, i64, i64, i64) {
     (line_min, line_max, column_min, column_max)
 }
 
-pub fn print_elfs(elfs: &HashSet<Elf>) {
+pub fn print_elfs(elfs: &AHashSet<Elf>) {
     let (line_min, line_max, column_min, column_max) = get_elfs_bounding_box(elfs);
 
     for line in line_min..=line_max {
@@ -177,11 +177,11 @@ pub fn print_elfs(elfs: &HashSet<Elf>) {
     println!();
 }
 
-fn solve(elfs: &HashSet<Elf>, verbose: bool) {
-    let mut current: HashSet<Elf> = elfs.clone();
-    let mut next: HashSet<Elf> = HashSet::new();
-    let mut movement: HashMap<Elf, Elf> = HashMap::new();
-    let mut occupation: HashMap<Elf, usize> = HashMap::new();
+fn solve(elfs: &AHashSet<Elf>, verbose: bool) {
+    let mut current: AHashSet<Elf> = elfs.clone();
+    let mut next: AHashSet<Elf> = AHashSet::new();
+    let mut movement: AHashMap<Elf, Elf> = AHashMap::new();
+    let mut occupation: AHashMap<Elf, usize> = AHashMap::new();
     let mut round: usize = 0;
     let mut movement_count: usize = 0;
 
@@ -192,16 +192,16 @@ fn solve(elfs: &HashSet<Elf>, verbose: bool) {
             print_elfs(&current);
         }
 
-        // Fill the movement and and occupation hashmaps
+        // Fill the movement and and occupation AHashMaps
         for elf in &current {
             let elf_new_position = elf.compute_new_position(starting_direction, &current);
             // Add the elf to the movement list
             movement.insert(elf.clone(), elf_new_position.clone());
-            // Add the elf to the occupation hashmap
+            // Add the elf to the occupation AHashMap
             *occupation.entry(elf_new_position).or_default() += 1;
         }
 
-        // Update elf position in the next hashset if they can move
+        // Update elf position in the next AHashSet if they can move
         for elf in &current {
             let elf_new_pos = &movement[elf];
 
@@ -224,7 +224,7 @@ fn solve(elfs: &HashSet<Elf>, verbose: bool) {
 
         // put next in current
         current = next;
-        next = HashSet::new();
+        next = AHashSet::new();
 
         // Increment round count
         round += 1;
@@ -253,7 +253,7 @@ fn main() {
     let args = Cli::parse();
 
     let data: String = fs::read_to_string(&args.path).unwrap();
-    let elfs: HashSet<Elf> = data
+    let elfs: AHashSet<Elf> = data
         .lines()
         .enumerate()
         .flat_map(|(i_line, line)| {
