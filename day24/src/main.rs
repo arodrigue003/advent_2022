@@ -1,10 +1,12 @@
-use clap::Parser;
-use num::integer::lcm;
-use petgraph::algo::astar;
-use petgraph::Graph;
 use std::fmt::{Display, Formatter};
 use std::fs;
 use std::path::PathBuf;
+
+use clap::Parser;
+use num::integer::lcm;
+use petgraph::algo::astar;
+use petgraph::graph::NodeIndex;
+use petgraph::Graph;
 
 static RIGHT: u8 = 1;
 static BOT: u8 = 1 << 1;
@@ -119,12 +121,24 @@ struct Cli {
     path: PathBuf,
 }
 
-// fn solve_part_one(data: &str) {
-//     println!("Part one solution:");
-// }
+fn compute_path(
+    graph: &Graph<(usize, usize, usize), usize>,
+    start: NodeIndex,
+    end: &Point,
+) -> (usize, NodeIndex) {
+    let (len, path) = astar(
+        &graph,
+        start,
+        |finish| {
+            let weight = &graph[finish];
+            weight.1 == end.line && weight.2 == end.column
+        },
+        |e| *e.weight(),
+        |_| 0,
+    )
+    .unwrap();
 
-fn solve_part_two(data: &str) {
-    println!("Part two solution:");
+    (len, path[path.len() - 1])
 }
 
 fn main() {
@@ -234,7 +248,7 @@ fn main() {
         for i_line in 1..height - 1 {
             for i_column in 1..width - 1 {
                 // If the current element is not free, skip for the next part
-                if !grids[generation][i_line][i_column].is_free() {
+                if grids[generation][i_line][i_column].is_occupied() {
                     continue;
                 }
 
@@ -298,22 +312,28 @@ fn main() {
                 1,
             );
         }
+
+        // Add end chain and going out
+        graph.add_edge(
+            nodes[generation][end.line][end.column],
+            nodes[(generation + 1) % cycle_len][end.line][end.column],
+            1,
+        );
+        if grids[generation + 1][end.line - 1][end.column].is_free() {
+            graph.add_edge(
+                nodes[generation][end.line][end.column],
+                nodes[(generation + 1) % cycle_len][end.line - 1][end.column],
+                1,
+            );
+        }
     }
 
     // Find the path
-    let (len, path) = astar(
-        &graph,
-        nodes[0][start.line][start.column],
-        |finish| {
-            let weight = &graph[finish];
-            weight.1 == end.line && weight.2 == end.column
-        },
-        |e| *e.weight(),
-        |_| 0,
-    )
-    .unwrap();
+    let (len1, new_start) = compute_path(&graph, nodes[0][start.line][start.column], &end);
+    println!("Part one solution: {}", len1);
 
-    println!("Part one solution: {}", len);
-
-    solve_part_two(&data);
+    // Going back to the start and to the end again
+    let (len2, new_start) = compute_path(&graph, new_start, &start);
+    let (len3, _) = compute_path(&graph, new_start, &end);
+    println!("Part two solution: {}", len1 + len2 + len3);
 }
