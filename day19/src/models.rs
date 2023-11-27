@@ -89,3 +89,22 @@ pub enum BuildOption {
     Obsidian,
     Geode,
 }
+
+#[derive(Debug, Eq, PartialEq, Clone)]
+pub struct MaxTime {
+    pub ore: usize,
+    pub clay: usize,
+    pub obsidian: usize,
+    pub geode: usize,
+}
+
+impl MaxTime {
+    pub fn new(time: usize, blueprint: &Blueprint) -> Self {
+        Self {
+            ore: time - blueprint.ore - 2 - 2,
+            clay: time - 6,
+            obsidian: time - 4,
+            geode: time - 2,
+        }
+    }
+}
