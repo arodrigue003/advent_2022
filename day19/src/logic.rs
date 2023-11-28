@@ -1,16 +1,17 @@
-use crate::models::{Blueprint, BuildOption, Game, MaxTime};
-use rayon::prelude::*;
+use crate::models::{Blueprint, BuildOption, Game, MaxRobot, MaxTime};
 
 impl Game {
     pub fn build_options(
         &mut self,
         current_time: usize,
         max_time: &MaxTime,
+        max_robot: &MaxRobot,
         blueprint: &Blueprint,
     ) -> [Option<BuildOption>; 5] {
         [
             Some(BuildOption::None),
             if current_time <= max_time.ore
+                && self.robots.ore < max_robot.ore
                 && !self.forbidden_builds.ore
                 && self.resources.ore >= blueprint.ore
             {
@@ -20,6 +21,7 @@ impl Game {
                 None
             },
             if current_time <= max_time.clay
+                && self.robots.clay < max_robot.clay
                 && !self.forbidden_builds.clay
                 && self.resources.ore >= blueprint.clay
             {
@@ -29,6 +31,7 @@ impl Game {
                 None
             },
             if current_time <= max_time.obsidian
+                && self.robots.obsidian < max_robot.obsidian
                 && !self.forbidden_builds.obsidian
                 && self.resources.ore >= blueprint.obsidian.0
                 && self.resources.clay >= blueprint.obsidian.1
@@ -96,6 +99,7 @@ fn simulate_game_with_scout_rec(
     current_time: usize,
     time: usize,
     max_time: &MaxTime,
+    max_robot: &MaxRobot,
     blueprint: &Blueprint,
 ) -> usize {
     if current_time == time {
@@ -103,36 +107,31 @@ fn simulate_game_with_scout_rec(
     }
 
     // Get build option
-    let build_options = game.build_options(current_time, max_time, blueprint);
+    let build_options = game.build_options(current_time, max_time, max_robot, blueprint);
 
     // Apply them recursively
-    if current_time <= 10 {
-        build_options
-            .into_par_iter()
-            .flatten()
-            .map(|build_option| {
-                let mut game = game.clone();
-                game.tick(build_option, blueprint);
-                simulate_game_with_scout_rec(&mut game, current_time + 1, time, max_time, blueprint)
-            })
-            .max()
-            .unwrap()
-    } else {
-        build_options
-            .into_iter()
-            .flatten()
-            .map(|build_option| {
-                let mut game = game.clone();
-                game.tick(build_option, blueprint);
-                simulate_game_with_scout_rec(&mut game, current_time + 1, time, max_time, blueprint)
-            })
-            .max()
-            .unwrap()
-    }
+    build_options
+        .into_iter()
+        .flatten()
+        .map(|build_option| {
+            let mut game = game.clone();
+            game.tick(build_option, blueprint);
+            simulate_game_with_scout_rec(
+                &mut game,
+                current_time + 1,
+                time,
+                max_time,
+                max_robot,
+                blueprint,
+            )
+        })
+        .max()
+        .unwrap()
 }
 
 pub fn simulate_game_with_scout(time: usize, blueprint: &Blueprint) -> usize {
     let max_time = MaxTime::new(time, blueprint);
+    let max_robot = MaxRobot::new(blueprint);
     let mut game = Game::new();
-    simulate_game_with_scout_rec(&mut game, 0, time, &max_time, blueprint)
+    simulate_game_with_scout_rec(&mut game, 0, time, &max_time, &max_robot, blueprint)
 }

@@ -108,3 +108,24 @@ impl MaxTime {
         }
     }
 }
+
+#[derive(Debug, Eq, PartialEq, Clone)]
+pub struct MaxRobot {
+    pub ore: usize,
+    pub clay: usize,
+    pub obsidian: usize,
+}
+
+impl MaxRobot {
+    pub fn new(blueprint: &Blueprint) -> Self {
+        Self {
+            ore: blueprint.ore.max(
+                blueprint
+                    .clay
+                    .max(blueprint.obsidian.0.max(blueprint.geode.0)),
+            ),
+            clay: blueprint.obsidian.1,
+            obsidian: blueprint.geode.1,
+        }
+    }
+}

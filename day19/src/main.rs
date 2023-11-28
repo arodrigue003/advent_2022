@@ -1,6 +1,5 @@
 use std::fs;
 use std::path::PathBuf;
-use std::time::Instant;
 
 use clap::Parser;
 use day19::logic::simulate_game_with_scout;
@@ -28,8 +27,6 @@ fn solve_part_one(blueprints: &[Blueprint]) {
 }
 
 fn solve_part_two(blueprints: &[Blueprint]) {
-    let now = Instant::now();
-
     let res: usize = blueprints
         .iter()
         .take(3)
@@ -37,7 +34,6 @@ fn solve_part_two(blueprints: &[Blueprint]) {
         .product();
 
     println!("Part two solution: {}", res);
-    println!("Elapsed time: {} ms", now.elapsed().as_millis());
 }
 
 fn main() {
