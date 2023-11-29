@@ -68,6 +68,7 @@ pub fn compute_distances(valves: &[Valve]) -> (usize, HashMap<usize, Vec<ValveGr
 }
 
 pub fn optimize_flow_rate_rec_one_person(
+    memo: &mut HashMap<usize, usize>,
     current_node: usize,
     current_time: usize,
     current_score: usize,
@@ -89,98 +90,26 @@ pub fn optimize_flow_rate_rec_one_person(
             }
 
             // Compute the added score
-            let added_score = (max_time - current_time - vgwd.distance - 1) * vgwd.flow_rate;
+            let new_score =
+                current_score + (max_time - current_time - vgwd.distance - 1) * vgwd.flow_rate;
+
+            let new_visited = visited | (1 << vgwd.node);
+
+            // Update the memo
+            memo.entry(new_visited)
+                .and_modify(|value| *value = (*value).max(new_score))
+                .or_insert(new_score);
 
             // Call the function recursively with the new parameter
             optimize_flow_rate_rec_one_person(
+                memo,
                 vgwd.node,
                 current_time + vgwd.distance + 1,
-                current_score + added_score,
-                visited | (1 << vgwd.node),
+                new_score,
+                new_visited,
                 max_time,
                 distances,
             )
-        })
-        .max()
-        .unwrap()
-}
-
-#[allow(clippy::too_many_arguments)]
-pub fn optimize_flow_rate_rec_two_person(
-    current_node_1: usize,
-    current_node_2: usize,
-    current_time_1: usize,
-    current_time_2: usize,
-    current_score: usize,
-    visited: usize,
-    max_time: usize,
-    distances: &Distances,
-) -> usize {
-    distances[&current_node_1]
-        .iter()
-        .flat_map(|vgwd_1| {
-            distances[&current_node_2].iter().map(|vgwd_2| {
-                // Don't let them go at the same destination
-                if vgwd_1.node == vgwd_2.node {
-                    return current_score;
-                }
-
-                // Check which one is ok
-                let first_is_ok = visited & (1 << vgwd_1.node) == 0
-                    && current_time_1 + vgwd_1.distance + 1 < max_time;
-                let second_is_ok = visited & (1 << vgwd_2.node) == 0
-                    && current_time_2 + vgwd_2.distance + 1 < max_time;
-
-                // Action depends on the status of each part
-                match (first_is_ok, second_is_ok) {
-                    (false, false) => current_score,
-                    (false, true) => {
-                        // One is out, fallback on optimize_flow_rate_rec_one_person
-                        let added_score =
-                            (max_time - current_time_2 - vgwd_2.distance - 1) * vgwd_2.flow_rate;
-
-                        optimize_flow_rate_rec_one_person(
-                            vgwd_2.node,
-                            current_time_2 + vgwd_2.distance + 1,
-                            current_score + added_score,
-                            visited | (1 << vgwd_2.node),
-                            max_time,
-                            distances,
-                        )
-                    }
-                    (true, false) => {
-                        // Two is out, fallback on optimize_flow_rate_rec_one_person
-                        let added_score =
-                            (max_time - current_time_1 - vgwd_1.distance - 1) * vgwd_1.flow_rate;
-
-                        optimize_flow_rate_rec_one_person(
-                            vgwd_1.node,
-                            current_time_1 + vgwd_1.distance + 1,
-                            current_score + added_score,
-                            visited | (1 << vgwd_1.node),
-                            max_time,
-                            distances,
-                        )
-                    }
-                    (true, true) => {
-                        // keep going with both of them
-                        let added_score = (max_time - current_time_2 - vgwd_2.distance - 1)
-                            * vgwd_2.flow_rate
-                            + (max_time - current_time_1 - vgwd_1.distance - 1) * vgwd_1.flow_rate;
-
-                        optimize_flow_rate_rec_two_person(
-                            vgwd_1.node,
-                            vgwd_2.node,
-                            current_time_1 + vgwd_1.distance + 1,
-                            current_time_2 + vgwd_2.distance + 1,
-                            current_score + added_score,
-                            visited | (1 << vgwd_1.node) | (1 << vgwd_2.node),
-                            max_time,
-                            distances,
-                        )
-                    }
-                }
-            })
         })
         .max()
         .unwrap()

@@ -13,7 +13,7 @@
 
 * [ ] Day12: Improve part02 solution
 * [ ] Day15: See if it is possible to generalize the SparseInterval approach to a 2d space
-* [ ] Day16: Optimize computation time for part 02
+* [x] Day16: Optimize computation time for part 02
 * [ ] Day18: Make it work in debug mode
 * [ ] Day22: Handle every cube pattern
 

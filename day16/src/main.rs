@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 
@@ -19,26 +20,40 @@ struct Cli {
 }
 
 fn solve_part_one(start: usize, distances_from_start: &Distances) {
+    let mut _flows = HashMap::new();
     println!(
         "Part one solution: {}",
-        logic::optimize_flow_rate_rec_one_person(start, 0, 0, 0, 30, distances_from_start)
+        logic::optimize_flow_rate_rec_one_person(
+            &mut _flows,
+            start,
+            0,
+            0,
+            0,
+            30,
+            distances_from_start
+        )
     );
 }
 
 fn solve_part_two(start: usize, distances_from_start: &Distances) {
-    println!(
-        "Part two solution: {}",
-        logic::optimize_flow_rate_rec_two_person(
-            start,
-            start,
-            0,
-            0,
-            0,
-            0,
-            26,
-            distances_from_start
-        )
-    );
+    let mut flows = HashMap::new();
+    logic::optimize_flow_rate_rec_one_person(&mut flows, start, 0, 0, 0, 26, distances_from_start);
+
+    let res = flows
+        .iter()
+        .flat_map(|(path_1, flow_1)| {
+            flows.iter().filter_map(move |(path_2, flow_2)| {
+                if path_1 & path_2 == 0 {
+                    Some(flow_1 + flow_2)
+                } else {
+                    None
+                }
+            })
+        })
+        .max()
+        .unwrap();
+
+    println!("Part two solution: {}", res);
 }
 
 fn main() {
