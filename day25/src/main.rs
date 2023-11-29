@@ -1,6 +1,6 @@
 use std::{env, fs};
 
-fn to_snafu(fuel_requirement: &mut i64) -> String {
+fn to_snafu(mut fuel_requirement: i64) -> String {
     let mut snafu_fuel_requirement = String::new();
     while fuel_requirement != 0 {
         let quotient = ((fuel_requirement + 2) % 5) - 2;
@@ -18,7 +18,7 @@ fn to_snafu(fuel_requirement: &mut i64) -> String {
 }
 
 fn solve_part_one(data: &str) {
-    let mut fuel_requirement: i64 = data
+    let fuel_requirement: i64 = data
         .lines()
         .map(|line| {
             line.chars().fold(0, |acc, x| {
@@ -35,12 +35,12 @@ fn solve_part_one(data: &str) {
         })
         .sum();
 
-    let snafu_fuel_requirement = to_snafu(&mut fuel_requirement);
+    let snafu_fuel_requirement = to_snafu(fuel_requirement);
 
     println!("Part one solution: {:#?}", snafu_fuel_requirement);
 }
 
-fn solve_part_two(data: &str) {
+fn solve_part_two(_data: &str) {
     println!("Part two solution:");
 }
 

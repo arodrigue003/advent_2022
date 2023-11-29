@@ -86,7 +86,7 @@ fn solve_part_two(monkeys: &HashMap<&str, Monkey>) {
     let mut monkeys = monkeys.clone();
 
     // Modify monkey in order to simplify the computation
-    let mut root = monkeys.get_mut("root").unwrap();
+    let root = monkeys.get_mut("root").unwrap();
     *root = match root {
         Monkey::Operation(operation) => Monkey::Operation(Operation {
             left: operation.left,
